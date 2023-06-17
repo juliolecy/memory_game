@@ -4,9 +4,10 @@ import logoImage from './assets/devmemory_logo.png'
 import { Button } from './components/Button'
 import { InfoItem } from './components/InfoItem'
 import RestartIcon from './svgs/restart.svg'
-import { GridItemType } from './types/GridItemType'
+import {GridItemType}  from './types/GridItemType'
 import {items} from './data/items.ts'
 import { GridItem } from './components/GridItem/index.tsx'
+import { formatTimeElapsed } from './utils/formatTimeElapsed.ts'
 const App = () =>{
 
   const[playing, setPlaying]=useState<boolean>(false);
@@ -16,6 +17,58 @@ const App = () =>{
   const [gridItems, setGridItems] = useState<GridItemType[]>([])
 
   useEffect(()=> handleResetGame(), []);
+
+  useEffect(()=>{
+    const timer = setInterval(()=>{
+      if(playing){
+        setTimeElapsed(timeElapsed +1)
+      }
+    }, 1000)
+    return () => clearInterval(timer)
+  },[playing, timeElapsed])
+
+
+// Verify if opened items are equal
+  useEffect(()=>{
+    if(showCount ===2){
+      let opened = gridItems.filter(item => item.shown === true)
+      
+      if(opened.length === 2 ){
+        //if both are equal, set each permanentShown === true
+        if(opened[0].item === opened[1].item){
+          let tmpGrid = [...gridItems];
+          for(let i in tmpGrid){
+            if(tmpGrid[i].shown){
+              tmpGrid[i].permanentShown=true;
+              tmpGrid[i].shown=false;
+            }
+          }
+          setGridItems(tmpGrid);
+          setShowCount(0)
+          setMoves(moves => moves + 1)
+        } else { //if they are different, clean all shown
+         setTimeout(()=>{
+          let tmpGrid = [...gridItems];
+          for (let i in tmpGrid){
+            
+            tmpGrid[i].shown = false
+          }
+          setGridItems(tmpGrid);
+          setShowCount(0)
+          setMoves(moves => moves + 1)
+         },1000)
+        }
+        
+      }
+    }
+  },[showCount, gridItems])
+
+  useEffect(()=>{
+    //verify if game is over
+    if(moves>0 && gridItems.every(item => item.permanentShown === true)){
+      setPlaying(false);
+    }
+  },[moves, gridItems])
 
   const handleResetGame = () =>{
     // Reset
@@ -54,7 +107,15 @@ const App = () =>{
   }
 
   const handleItemClick = (index:number)=>{
-    return
+    if(playing && index !== null && showCount < 2 ){
+      let tmpGrid = [...gridItems];
+      if(tmpGrid[index].permanentShown === false && tmpGrid[index].shown === false){
+        tmpGrid[index].shown = true;
+        setShowCount(showCount + 1)
+      }
+      setGridItems(tmpGrid)
+    }
+
   }
 
   return (
@@ -67,8 +128,9 @@ const App = () =>{
           </k.LogoLink>
 
           <k.InfoArea>
-            <InfoItem label='Time' value='00:00'/>
-            <InfoItem label='Moviments' value='0'/>
+            
+            <InfoItem label='Time' value={formatTimeElapsed(timeElapsed)}/>
+            <InfoItem label='Moviments' value={moves.toString()}/>
           </k.InfoArea>
 
           <Button 
@@ -83,14 +145,13 @@ const App = () =>{
 
       <k.GridArea>
         <k.Grid>
-          {gridItems.map((item, index)=>{
+          {gridItems.map((item, index)=>(
             <GridItem 
-           key={index}
+            key={index}
             item={item}
-            onClick={()=>{handleItemClick(index)}}>
-
-            </GridItem>
-          })}
+            onClick={()=>handleItemClick(index)}
+            />
+          ))}
         </k.Grid>
 
       </k.GridArea>
